@@ -2,7 +2,7 @@ import sys
 import os
 import pickle
 import tarfile
-
+import subprocess
 import numpy as np
 
 # ----------------------------------------------------------------------------
@@ -15,6 +15,62 @@ def _load_CIFAR_batch(filename):
       X = X.reshape(10000, 3, 32, 32).astype("float32")
       Y = np.array(Y, dtype=np.uint8)
       return X, Y
+
+def load_mnist():
+  # We first define a download function, supporting both Python 2 and 3.
+  if sys.version_info[0] == 2:
+    from urllib import urlretrieve
+  else:
+    from urllib.request import urlretrieve
+
+  def download(filename, source='http://yann.lecun.com/exdb/mnist/'):
+    print "Downloading %s" % filename
+    urlretrieve(source + filename, filename)
+
+  file_names = ['train-images-idx3-ubyte.gz',
+                'train-labels-idx1-ubyte.gz',
+                't10k-images-idx3-ubyte.gz',
+                't10k-labels-idx1-ubyte.gz']
+  for file_name in file_names:
+    print file_name
+    if not os.path.exists(file_name):
+      download(file_name)
+    out_path = os.path.join('./',file_name)
+    cmd = ['gzip', '-d', out_path]
+    print('Decompressing ', file_name)
+    subprocess.call(cmd)
+  data_dir = './'
+
+  fd = open(os.path.join(data_dir,'train-images-idx3-ubyte'))
+  loaded = np.fromfile(file=fd,dtype=np.uint8)
+  trX = loaded[16:].reshape((60000,28,28,1)).astype(np.float)
+
+  fd = open(os.path.join(data_dir,'train-labels-idx1-ubyte'))
+  loaded = np.fromfile(file=fd,dtype=np.uint8)
+  trY = loaded[8:].reshape((60000)).astype(np.float)
+
+  fd = open(os.path.join(data_dir,'t10k-images-idx3-ubyte'))
+  loaded = np.fromfile(file=fd,dtype=np.uint8)
+  teX = loaded[16:].reshape((10000,28,28,1)).astype(np.float)
+
+  fd = open(os.path.join(data_dir,'t10k-labels-idx1-ubyte'))
+  loaded = np.fromfile(file=fd,dtype=np.uint8)
+  teY = loaded[8:].reshape((10000)).astype(np.float)
+
+  trY = np.asarray(trY)
+  teY = np.asarray(teY)
+
+  X = np.concatenate((trX, teX), axis=0)
+  y = np.concatenate((trY, teY), axis=0).astype(np.int)
+
+  seed = 547
+  np.random.seed(seed)
+  np.random.shuffle(X)
+  np.random.seed(seed)
+  np.random.shuffle(y)
+
+  return X/255.
+
 
 def load_cifar10(dest_directory='.'):
   """Download and extract the tarball from Alex's website."""
@@ -48,7 +104,3 @@ def load_cifar10(dest_directory='.'):
   Ytr = np.concatenate(ys)
   Xte, Yte = _load_CIFAR_batch('cifar-10-batches-py/test_batch')
   return Xtr, Ytr, Xte, Yte
-
-
-def load_mnist():
-    pass
