@@ -35,16 +35,18 @@ class WasserstainDCGAN(object):
         with tf.variable_scope('discriminator'):
             d_fake = self._make_descriminator(self.P)
 
-        # get the weights
-        self.w_g = [w for w in tf.global_variables() if 'generator' in w.name]
-        self.w_d = [w for w in tf.global_variables() if 'discriminator' in w.name]
 
         with tf.variable_scope('discriminator') as scope:
             scope.reuse_variables()
             d_real = self._make_descriminator(self.X_d)
+         # get the weights
+        self.w_g = [w for w in tf.global_variables() if 'generator' in w.name]
+        self.w_d = [w for w in tf.global_variables() if 'discriminator' in w.name]
         # create losses
         self.loss_g = tf.reduce_mean(d_fake)
         self.loss_d = tf.reduce_mean(d_real) - tf.reduce_mean(d_fake)
+        #self.loss_d = tf.Print(self.loss_d, [self.loss_d, self.X_d], summarize=1000)
+        #self.loss_g = tf.Print(self.loss_g, [self.loss_g], summarize=1000)
 
         # compute and store discriminator probabilities
         self.d_real = tf.reduce_mean(d_real)
@@ -55,7 +57,6 @@ class WasserstainDCGAN(object):
         # create an optimizer
         optimizer_g = tf.train.RMSPropOptimizer(self.lr)
         optimizer_d = tf.train.RMSPropOptimizer(self.lr)
-
         # get gradients
         gv_g = optimizer_g.compute_gradients(self.loss_g, self.w_g)
         gv_d = optimizer_d.compute_gradients(self.loss_d, self.w_d)
@@ -87,20 +88,22 @@ class WasserstainDCGAN(object):
                 n_critic = 100 if g_step < 25 or (g_step + 1) % 500 == 0 else self.num_critic
 
                 start_time = time.time()
+                losses_d = []
                 for i in range(n_critic):
-                    losses_d = []
 
                     # load the batch
-                    X_batch = data[idx*self.batch_size: (idx+1)*self.batch_size]
+                    X_batch = data[idx*self.batch_size: (idx+1)*self.batch_size].astype('float32')
+                    # train the generator
                     noise = np.random.rand(self.batch_size, self.num_initial_dimensions).astype('float32')
                     feed_dict = {
                         self.X_g: noise,
                         self.X_d: X_batch
                     }
-
+                    #print X_batch[0]
                     # train the critic/discriminator
                     loss_d = self.train_d(feed_dict)
                     losses_d.append(loss_d)
+                    print loss_d
 
                 loss_d = np.array(losses_d).mean()
 
@@ -139,7 +142,6 @@ class WasserstainDCGAN(object):
     def train_d(self, feed_dict):
         # clip the weights, so that they fall in [-c, c]
         self.sess.run(self.clip_updates, feed_dict=feed_dict)
-
         # take a step of RMSProp
         self.sess.run(self.train_op_d, feed_dict=feed_dict)
 
@@ -150,39 +152,40 @@ class WasserstainDCGAN(object):
         return int(math.ceil(float(size) / float(stride)))
 
     def _make_descriminator(self, input):
-        h0 = ops.lrelu(ops.conv2d(input, self.df_dim, name='d_h0_conv'))
+        conv1 = ops.conv2d(input, self.df_dim, name='d_h0_conv')
+        h0 = ops.lrelu(conv1)
         h1 = ops.lrelu(ops.batch_norm(ops.conv2d(h0, self.df_dim*2, name='d_h1_conv'), name='d_bn1'))
-        h2 = ops.lrelu(ops.batch_norm(ops.conv2d(h1, self.df_dim*4, name='d_h2_conv'), name='d_bn2'))
-        h3 = ops.lrelu(ops.batch_norm(ops.conv2d(h2, self.df_dim*8, name='d_h3_conv'), name='d_bn3'))
-        h4 = ops.lrelu(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h3_lin')
-        return h4
+        #h2 = ops.lrelu(ops.batch_norm(ops.conv2d(h1, self.df_dim*4, name='d_h2_conv'), name='d_bn2'))
+        #h3 = ops.lrelu(ops.batch_norm(ops.conv2d(h2, self.df_dim*8, name='d_h3_conv'), name='d_bn3'))
+        h2 = ops.lrelu(tf.reshape(h1, [self.batch_size, -1]), 1, 'd_h1_lin')
+        return h2
 
     def _make_generator(self, input):
         s_h, s_w = self.img_size, self.img_size
         s_h2, s_w2 = self._conv_out_size_same(s_h, 2), self._conv_out_size_same(s_w, 2)
         s_h4, s_w4 = self._conv_out_size_same(s_h2, 2), self._conv_out_size_same(s_w2, 2)
-        s_h8, s_w8 = self._conv_out_size_same(s_h4, 2), self._conv_out_size_same(s_w4, 2)
-        s_h16, s_w16 = self._conv_out_size_same(s_h8, 2), self._conv_out_size_same(s_w8, 2)
+        #s_h8, s_w8 = self._conv_out_size_same(s_h4, 2), self._conv_out_size_same(s_w4, 2)
+        #s_h16, s_w16 = self._conv_out_size_same(s_h8, 2), self._conv_out_size_same(s_w8, 2)
         # project `z` and reshape
         self.z_, self.h0_w, self.h0_b = ops.linear(
-            input, self.gf_dim*8*s_h16*s_w16, 'g_h0_lin', with_w=True)
+            input, self.gf_dim*8*s_h4*s_w4, 'g_h0_lin', with_w=True)
 
         self.h0 = tf.reshape(
-            self.z_, [-1, s_h16, s_w16, self.gf_dim * 8])
+            self.z_, [-1, s_h4, s_w4, self.gf_dim * 8])
         h0 = tf.nn.relu(ops.batch_norm(self.h0, name='g_bn0'))
 
         self.h1, self.h1_w, self.h1_b = ops.deconv2d(
-            h0, [self.batch_size, s_h8, s_w8, self.gf_dim*4], name='g_h1', with_w=True)
+            h0, [self.batch_size, s_h2, s_w2, self.gf_dim*4], name='g_h1', with_w=True)
         h1 = tf.nn.relu(ops.batch_norm(self.h1, name='g_bn1'))
 
+        # h2, self.h2_w, self.h2_b = ops.deconv2d(
+        #     h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], name='g_h2', with_w=True)
+        # h2 = tf.nn.relu(ops.batch_norm(h2, name='g_bn2'))
+        #
+        # h3, self.h3_w, self.h3_b = ops.deconv2d(
+        #     h2, [self.batch_size, s_h2, s_w2, self.gf_dim*1], name='g_h3', with_w=True)
+        # h3 = tf.nn.relu(ops.batch_norm(h3, name='g_bn3'))
+
         h2, self.h2_w, self.h2_b = ops.deconv2d(
-            h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], name='g_h2', with_w=True)
-        h2 = tf.nn.relu(ops.batch_norm(h2, name='g_bn2'))
-
-        h3, self.h3_w, self.h3_b = ops.deconv2d(
-            h2, [self.batch_size, s_h2, s_w2, self.gf_dim*1], name='g_h3', with_w=True)
-        h3 = tf.nn.relu(ops.batch_norm(h3, name='g_bn3'))
-
-        h4, self.h4_w, self.h4_b = ops.deconv2d(
-            h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
-        return h4
+            h1, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
+        return h2

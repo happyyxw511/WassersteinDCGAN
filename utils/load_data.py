@@ -60,16 +60,17 @@ def load_mnist():
   trY = np.asarray(trY)
   teY = np.asarray(teY)
 
-  X = np.concatenate((trX, teX), axis=0)
+  X = np.concatenate((trX, teX), axis=0).astype(np.float32)
   y = np.concatenate((trY, teY), axis=0).astype(np.int)
 
   seed = 547
   np.random.seed(seed)
   np.random.shuffle(X)
+
   np.random.seed(seed)
   np.random.shuffle(y)
 
-  return X/255.
+  return X
 
 
 def load_cifar10(dest_directory='.'):

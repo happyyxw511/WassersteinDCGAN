@@ -13,11 +13,12 @@ else:
 def batch_norm(net, name):
     channels = net.get_shape()[3].value
     var_shape = [channels]
-    shift = tf.Variable(tf.zeros(var_shape))
-    scale = tf.Variable(tf.zeros(var_shape))
+    with tf.variable_scope(name):
+        shift = tf.get_variable('shift', var_shape, initializer=tf.zeros_initializer())
+        scale = tf.get_variable('scale', var_shape, initializer=tf.zeros_initializer())
     mu, sigma = tf.nn.moments(net, [0, 1, 2], keep_dims=True)
     eps = 1e-3
-    return tf.nn.batch_normalization(net, mu, sigma, shift, scale, eps)
+    return tf.nn.batch_normalization(net, mu, sigma, shift, scale, eps, name=name)
 
 def conv_cond_concat(x, y):
   """Concatenate conditioning vector on feature map axis."""
