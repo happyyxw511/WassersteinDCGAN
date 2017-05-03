@@ -43,8 +43,8 @@ class WasserstainDCGAN(object):
         self.w_g = [w for w in tf.global_variables() if 'generator' in w.name]
         self.w_d = [w for w in tf.global_variables() if 'discriminator' in w.name]
         # create losses
-        self.loss_g = tf.reduce_mean(d_fake)
-        self.loss_d = tf.reduce_mean(d_real) - tf.reduce_mean(d_fake)
+        self.loss_g = -tf.reduce_mean(d_fake)
+        self.loss_d = -tf.reduce_mean(d_real) + tf.reduce_mean(d_fake)
         #self.loss_d = tf.Print(self.loss_d, [self.loss_d, self.X_d], summarize=1000)
         #self.loss_g = tf.Print(self.loss_g, [self.loss_g], summarize=1000)
 
@@ -85,7 +85,7 @@ class WasserstainDCGAN(object):
         while epoch < self.n_epoch:
             epoch += 1
             for idx in xrange(batch_ids):
-                n_critic = 100 if g_step < 25 or (g_step + 1) % 500 == 0 else self.num_critic
+                n_critic = self.num_critic # 100 if g_step < 25 or (g_step + 1) % 500 == 0 else self.num_critic
 
                 start_time = time.time()
                 losses_d = []
@@ -103,7 +103,6 @@ class WasserstainDCGAN(object):
                     # train the critic/discriminator
                     loss_d = self.train_d(feed_dict)
                     losses_d.append(loss_d)
-                    print loss_d
 
                 loss_d = np.array(losses_d).mean()
 
@@ -124,11 +123,16 @@ class WasserstainDCGAN(object):
 
                 # take samples
                 if g_step % 100 == 0:
-                    noise = np.random.rand(1, self.num_initial_dimensions).astype('float32')
+                    noise = np.random.rand(self.batch_size, self.num_initial_dimensions).astype('float32')
                     samples = self.generate_samples(noise)
-                    fname = logdir + '.mnist_samples-%d.png' % g_step
+                    fname = logdir + '/mnist_samples-%d.png' % g_step
+                    if samples[0].shape[2] == 1:
+                        sample = np.dstack([samples[0], samples[0], samples[0]])
+                    else:
+                        sample = samples[0]
+                    print sample[14, :]
                     plt.imsave(fname,
-                               samples,
+                               sample,
                                cmap='gray')
 
     def generate_samples(self, noise):
