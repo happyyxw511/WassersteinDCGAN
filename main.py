@@ -15,7 +15,7 @@ flags.DEFINE_integer('batch_size', default_value=128, docstring='size of mini-ba
 flags.DEFINE_integer('num_samples', default_value=5, docstring='the number of generated samples')
 flags.DEFINE_integer('num_initial_dimensions', default_value=100, docstring='the number of input dimensions for generator')
 flags.DEFINE_integer('img_size', default_value=28, docstring='the size of the image')
-flags.DEFINE_integer('n_epoch', default_value=10, docstring='the number of training epoch')
+flags.DEFINE_integer('n_epoch', default_value=200, docstring='the number of training epoch')
 
 
 def main():
@@ -28,11 +28,11 @@ def main():
     model = WasserstainDCGAN(FLAGS, c_dim=c_dim)
     model.construct_network()
     model.fit(X_train)
-    samples = model.generate_samples(FLAGS.num_samples)
-    if FLAGS.show:
-        for sample in samples:
-            cv2.imshow('generated_imgs', sample)
-            cv2.waitKey()
+    # samples = model.generate_samples(FLAGS.num_samples)
+    # if FLAGS.show:
+    #     for sample in samples:
+    #         cv2.imshow('generated_imgs', sample)
+    #         cv2.waitKey()
 
 
 
