@@ -156,7 +156,7 @@ class WasserstainDCGAN(object):
         return int(math.ceil(float(size) / float(stride)))
 
     def _make_descriminator(self, input):
-        conv1 = ops.conv2d(input, self.df_dim, name='d_h0_conv')
+        conv1 = ops.batch_norm(ops.conv2d(input, self.df_dim, name='d_h0_conv'), name='d_bn0')
         h0 = ops.lrelu(conv1)
         h1 = ops.lrelu(ops.batch_norm(ops.conv2d(h0, self.df_dim*2, name='d_h1_conv'), name='d_bn1'))
         #h2 = ops.lrelu(ops.batch_norm(ops.conv2d(h1, self.df_dim*4, name='d_h2_conv'), name='d_bn2'))
@@ -173,14 +173,16 @@ class WasserstainDCGAN(object):
         # project `z` and reshape
         self.z_, self.h0_w, self.h0_b = ops.linear(
             input, self.gf_dim*8*s_h4*s_w4, 'g_h0_lin', with_w=True)
+        normalized_value = ops.batch_norm(self.z_, name='g_bn0', axes=[0])
 
         self.h0 = tf.reshape(
-            self.z_, [-1, s_h4, s_w4, self.gf_dim * 8])
-        h0 = tf.nn.relu(ops.batch_norm(self.h0, name='g_bn0'))
+            normalized_value, [-1, s_h4, s_w4, self.gf_dim * 8])
+
+        h0 = ops.lrelu(self.h0)
 
         self.h1, self.h1_w, self.h1_b = ops.deconv2d(
             h0, [self.batch_size, s_h2, s_w2, self.gf_dim*4], name='g_h1', with_w=True)
-        h1 = tf.nn.relu(ops.batch_norm(self.h1, name='g_bn1'))
+        h1 = ops.lrelu(ops.batch_norm(self.h1, name='g_bn1'))
 
         # h2, self.h2_w, self.h2_b = ops.deconv2d(
         #     h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], name='g_h2', with_w=True)

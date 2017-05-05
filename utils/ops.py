@@ -10,15 +10,21 @@ else:
   def concat(tensors, axis, *args, **kwargs):
     return tf.concat(tensors, axis, *args, **kwargs)
 
-def batch_norm(net, name):
-    channels = net.get_shape()[3].value
-    var_shape = [channels]
+def batch_norm(net, name, axes=None):
+    if not axes:
+        axes = [0, 1, 2]
+        channels = net.get_shape()[3].value
+        var_shape = [channels]
+    else:
+        channels = net.get_shape()[1].value
+        var_shape = [channels]
     with tf.variable_scope(name):
         shift = tf.get_variable('shift', var_shape, initializer=tf.zeros_initializer())
-        scale = tf.get_variable('scale', var_shape, initializer=tf.zeros_initializer())
-    mu, sigma = tf.nn.moments(net, [0, 1, 2], keep_dims=True)
+        scale = tf.get_variable('scale', var_shape, initializer=tf.ones_initializer())
+    mu, sigma = tf.nn.moments(net, axes, keep_dims=False)
     eps = 1e-3
-    return tf.nn.batch_normalization(net, mu, sigma, shift, scale, eps, name=name)
+    return net
+    #return tf.nn.batch_normalization(net, mu, sigma, shift, scale, eps, name=name)
 
 def conv_cond_concat(x, y):
   """Concatenate conditioning vector on feature map axis."""

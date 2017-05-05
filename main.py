@@ -10,7 +10,7 @@ flags.DEFINE_string('dataset_dir', default_value='.', docstring='directory to sa
 flags.DEFINE_string('dataset', default_value='mnist', docstring='dataset')
 flags.DEFINE_float('learning_rate', default_value=5e-5, docstring='learning rate')
 flags.DEFINE_float('clip', default_value=1e-2, docstring='clip value')
-flags.DEFINE_integer('num_critic', default_value=5, docstring='number of critic training iterations')
+flags.DEFINE_integer('num_critic', default_value=1, docstring='number of critic training iterations')
 flags.DEFINE_integer('batch_size', default_value=128, docstring='size of mini-batch')
 flags.DEFINE_integer('num_samples', default_value=5, docstring='the number of generated samples')
 flags.DEFINE_integer('num_initial_dimensions', default_value=100, docstring='the number of input dimensions for generator')
