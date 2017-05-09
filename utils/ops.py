@@ -2,6 +2,7 @@ import math
 import numpy as np 
 import tensorflow as tf
 
+print tf.__version__
 
 if "concat_v2" in dir(tf):
   def concat(tensors, axis, *args, **kwargs):
@@ -10,7 +11,8 @@ else:
   def concat(tensors, axis, *args, **kwargs):
     return tf.concat(tensors, axis, *args, **kwargs)
 
-def batch_norm(net, name, axes=None):
+def batch_norm(net, name, phase_train, axes=None, decay = 0.999):
+    eps = 1e-3
     if not axes:
         axes = [0, 1, 2]
         channels = net.get_shape()[3].value
@@ -19,12 +21,24 @@ def batch_norm(net, name, axes=None):
         channels = net.get_shape()[1].value
         var_shape = [channels]
     with tf.variable_scope(name):
-        shift = tf.get_variable('shift', var_shape, initializer=tf.zeros_initializer())
-        scale = tf.get_variable('scale', var_shape, initializer=tf.ones_initializer())
-    mu, sigma = tf.nn.moments(net, axes, keep_dims=False)
-    eps = 1e-3
-    return net
-    #return tf.nn.batch_normalization(net, mu, sigma, shift, scale, eps, name=name)
+        beta = tf.get_variable('beta', var_shape, initializer=tf.zeros_initializer())
+        gamma = tf.get_variable('gamma', var_shape, initializer=tf.ones_initializer())
+        pop_mean = tf.get_variable('pop_mean', var_shape, initializer=tf.zeros_initializer(), trainable=False)
+        pop_var = tf.get_variable('pop_var', var_shape, initializer=tf.zeros_initializer(), trainable=False)
+
+        def mean_var_with_update():
+            batch_mean, batch_var = tf.nn.moments(net, axes, name='moments')
+            train_mean = tf.assign(pop_mean, pop_mean*decay + batch_mean*(1-decay))
+            train_var = tf.assign(pop_var, pop_var*decay + batch_var*(1-decay))
+            with tf.control_dependencies([train_mean, train_var]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(phase_train,
+                           mean_var_with_update,
+                           lambda: (pop_mean, pop_var))
+
+    #return net
+    return tf.nn.batch_normalization(net, mean, var, beta, gamma, eps, name=name)
 
 def conv_cond_concat(x, y):
   """Concatenate conditioning vector on feature map axis."""
