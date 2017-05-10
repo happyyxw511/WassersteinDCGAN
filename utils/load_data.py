@@ -70,7 +70,7 @@ def load_mnist():
   np.random.seed(seed)
   np.random.shuffle(y)
 
-  return X/225.
+  return X/255.
 
 
 def load_cifar10(dest_directory='.'):

@@ -84,6 +84,8 @@ class WasserstainDCGAN(object):
         batch_ids = num_imgs // self.batch_size
         print batch_ids
         while epoch < self.n_epoch:
+            # each epoch should have different random images
+            data = np.random.shuffle(data)
             epoch += 1
             for idx in xrange(batch_ids):
                 n_critic = self.num_critic # 100 if g_step < 25 or (g_step + 1) % 500 == 0 else self.num_critic
@@ -133,7 +135,6 @@ class WasserstainDCGAN(object):
                         sample = np.dstack([samples[0], samples[0], samples[0]])
                     else:
                         sample = samples[0]
-                    print sample[14, :]
                     plt.imsave(fname,
                                sample,
                                cmap='gray')
