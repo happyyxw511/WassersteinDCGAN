@@ -197,4 +197,5 @@ class WasserstainDCGAN(object):
 
         h2, self.h2_w, self.h2_b = ops.deconv2d(
             h1, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
-        return h2
+        h2_non_linear = ops.lrelu(h2, leak=0)
+        return h2_non_linear
