@@ -127,17 +127,16 @@ class WasserstainDCGAN(object):
                           (epoch, idx , g_step, tot_time, loss_d, loss_g)
 
                 # take samples
-                if g_step % 100 == 0:
+                if g_step % 200 == 0:
                     noise = np.random.rand(self.batch_size, self.num_initial_dimensions).astype('float32')
                     samples = self.generate_samples(noise)
-                    fname = logdir + '/mnist_samples-%d.png' % g_step
+                    fname = logdir + '/samples-%d.png' % g_step
                     if samples[0].shape[2] == 1:
                         sample = np.dstack([samples[0], samples[0], samples[0]])
                     else:
                         sample = samples[0]
                     plt.imsave(fname,
-                               sample,
-                               cmap='gray')
+                               sample)
 
     def generate_samples(self, noise):
         feed_dict = {self.X_g: noise, self.phase_train: False}
