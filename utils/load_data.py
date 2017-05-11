@@ -14,6 +14,7 @@ def _load_CIFAR_batch(filename):
       Y = datadict['labels']
       X = X.reshape(10000, 3, 32, 32).astype("float32")
       X = np.transpose(X, (0, 2, 3, 1))
+      X = X/255.
       Y = np.array(Y, dtype=np.uint8)
       return X, Y
 
